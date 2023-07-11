@@ -1,0 +1,33 @@
+/* ------------------
+
+ __       __                                __                   ______   __                      __                               
+/  \     /  |                              /  |                 /      \ /  |                    /  |                              
+$$  \   /$$ |  ______    _______   ______  $$ |  ______        /$$$$$$  |$$/   ______   _______  $$ | __    __   _______   ______  
+$$$  \ /$$$ | /      \  /       | /      \ $$ | /      \       $$ | _$$/ /  | /      \ /       \ $$ |/  |  /  | /       | /      \ 
+$$$$  /$$$$ | $$$$$$  |/$$$$$$$/  $$$$$$  |$$ | $$$$$$  |      $$ |/    |$$ | $$$$$$  |$$$$$$$  |$$ |$$ |  $$ |/$$$$$$$/  $$$$$$  |
+$$ $$ $$/$$ | /    $$ |$$      \  /    $$ |$$ | /    $$ |      $$ |$$$$ |$$ | /    $$ |$$ |  $$ |$$ |$$ |  $$ |$$ |       /    $$ |
+$$ |$$$/ $$ |/$$$$$$$ | $$$$$$  |/$$$$$$$ |$$ |/$$$$$$$ |      $$ \__$$ |$$ |/$$$$$$$ |$$ |  $$ |$$ |$$ \__$$ |$$ \_____ /$$$$$$$ |
+$$ | $/  $$ |$$    $$ |/     $$/ $$    $$ |$$ |$$    $$ |      $$    $$/ $$ |$$    $$ |$$ |  $$ |$$ |$$    $$/ $$       |$$    $$ |
+$$/      $$/  $$$$$$$/ $$$$$$$/   $$$$$$$/ $$/  $$$$$$$/        $$$$$$/  $$/  $$$$$$$/ $$/   $$/ $$/  $$$$$$/   $$$$$$$/  $$$$$$$/ 
+
+LINK: https://github.com/MasalaGianluca
+REMEDIATION TEAMSPHISHER V_1.0
+ ------------------ */
+                                                                                                                                 
+
+CloudAppEvents 
+| where Timestamp > ago(30d) 
+| where Application contains "Microsoft Teams"
+| where ActionType == "MessageCreatedHasLink"
+| where AccountId contains "@"
+| extend ExtUserDomain = tostring(split(AccountId, '@')[1])
+| extend CommunicationType=tostring(RawEventData.CommunicationType)
+| extend ClientIP=tostring(RawEventData.ClientIP)
+| extend ExtUserIP = tostring(split(ClientIP, '::ffff:')[1])
+| extend MsgURL=tostring(RawEventData.MessageURLs)
+| extend TeamsMsgURL=substring(MsgURL, 2, strlen(MsgURL)-4)
+| where CommunicationType == "OneOnOne"
+| sort by Timestamp desc 
+| project Timestamp, ExtUserDomain, AccountId, ExtUserIP, IPAddress, IsAnonymousProxy, CountryCode, City, ISP, IPTags, IPCategory, RawEventData, TeamsMsgURL
+| join UrlClickEvents on $left.TeamsMsgURL == $right.Url
+| where Workload == "Teams"
